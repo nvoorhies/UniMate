@@ -166,8 +166,16 @@ def _build_diffusion(config: MainConfig):
 
 def _load_checkpoint(model, model_path: str, config: MainConfig):
     """Load weights into ``model`` in place; apply EMA shadow if available."""
-    state_dict = torch.load(model_path, map_location='cpu')
-    model.load_state_dict(state_dict.get('model_state_dict', state_dict))
+    state_dict = torch.load(model_path, map_location='cpu', weights_only=False)
+    model_state = state_dict.get('model_state_dict', state_dict)
+    # A run launched with accelerate's ``dynamo_backend`` (torch.compile) saves
+    # the compiled wrapper's keys, every one prefixed ``_orig_mod.``; strip it so
+    # the checkpoint loads into the plain module.
+    model_state = {
+        (k[len('_orig_mod.'):] if k.startswith('_orig_mod.') else k): v
+        for k, v in model_state.items()
+    }
+    model.load_state_dict(model_state)
 
     if config.training.use_ema and 'ema_state_dict' in state_dict:
         logger.info("Loading EMA weights into model parameters.")

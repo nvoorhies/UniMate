@@ -312,11 +312,24 @@ def compute_bone_keyframes(rest_local_mat, anim_local_mat, bone_names,
 # 3. Action reconstruction
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _add_fcurves(action, bone_name, attr, n_components, keyframes):
+def _new_fcurve(action, armature, data_path, index):
+    """Create one F-curve on *action* for *armature*, on any Blender version.
+
+    Blender 4.4 introduced slotted ("layered") actions and 5.0 removed the
+    legacy ``Action.fcurves`` collection, so F-curves are created through
+    ``fcurve_ensure_for_datablock`` — which also creates and assigns the
+    action slot for the armature — wherever that API exists.
+    """
+    if hasattr(action, 'fcurve_ensure_for_datablock'):
+        return action.fcurve_ensure_for_datablock(armature, data_path, index=index)
+    return action.fcurves.new(data_path=data_path, index=index)
+
+
+def _add_fcurves(action, armature, bone_name, attr, n_components, keyframes):
     """Create per-channel fcurves for one pose-bone attribute."""
     data_path = f'pose.bones["{bone_name}"].{attr}'
     for i in range(n_components):
-        fc = action.fcurves.new(data_path=data_path, index=i)
+        fc = _new_fcurve(action, armature, data_path, i)
         fc.keyframe_points.add(len(keyframes))
         for idx, (frame, val) in enumerate(keyframes):
             kp = fc.keyframe_points[idx]
@@ -341,8 +354,8 @@ def rebuild_action_from_data(armature, anim_data_dict):
         if bone_name not in valid_bones:
             logger.warning(f"Skipping keyframes for '{bone_name}': not in armature")
             continue
-        _add_fcurves(new_action, bone_name, 'location', 3, data['location'])
-        _add_fcurves(new_action, bone_name, 'rotation_quaternion', 4, data['rotation'])
+        _add_fcurves(new_action, armature, bone_name, 'location', 3, data['location'])
+        _add_fcurves(new_action, armature, bone_name, 'rotation_quaternion', 4, data['rotation'])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
