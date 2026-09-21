@@ -25,6 +25,8 @@ import re
 import sys
 
 import bpy
+
+from data_process.utils.blender_export import action_fcurves, remove_fcurve
 from loguru import logger
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -49,7 +51,7 @@ _BONE_PATH_RE = re.compile(r'^pose\.bones\["(.+?)"\]')
 def _action_bone_names(action):
     """Bone names an action's F-curves drive."""
     names = set()
-    for fcurve in action.fcurves:
+    for fcurve in action_fcurves(action):
         match = _BONE_PATH_RE.match(fcurve.data_path)
         if match:
             names.add(match.group(1))
@@ -71,9 +73,9 @@ def _adopt_action(char_armature, action):
     # The importer keys the animation armature's *object* transform (unit
     # scale, axis correction) into the same action; the character must keep
     # its own object transform, so only bone channels come along.
-    for fcurve in [f for f in action.fcurves
+    for fcurve in [f for f in action_fcurves(action)
                    if not f.data_path.startswith('pose.bones')]:
-        action.fcurves.remove(fcurve)
+        remove_fcurve(action, fcurve)
 
     if char_armature.animation_data is None:
         char_armature.animation_data_create()

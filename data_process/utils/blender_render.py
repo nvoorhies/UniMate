@@ -21,6 +21,8 @@ from contextlib import contextmanager
 from typing import List, Literal, Optional, Tuple
 
 import bpy
+
+from data_process.utils.blender_export import action_fcurves
 import imageio
 import numpy as np
 from mathutils import Euler, Matrix, Vector
@@ -1022,7 +1024,7 @@ def render_action_multiview(
     # render then silently shows a static pose. Warn so it's diagnosable.
     target_bones = {
         m.group(1)
-        for fc in action.fcurves
+        for fc in action_fcurves(action)
         for m in [re.match(r'pose\.bones\["(.+?)"\]', fc.data_path)]
         if m
     }

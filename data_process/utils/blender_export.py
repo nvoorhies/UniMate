@@ -113,11 +113,38 @@ def list_gltf_files(input_dir: Path):
     return kept
 
 
+def action_fcurves(action):
+    """Every F-curve of *action*, on any Blender version.
+
+    Blender 4.4 introduced slotted ("layered") actions and 5.0 removed the
+    legacy ``Action.fcurves`` collection; there the curves live in the
+    channelbags of the action's (single) keyframe strip.
+    """
+    if hasattr(action, 'fcurves'):
+        return list(action.fcurves)
+    return [fc for layer in action.layers for strip in layer.strips
+            for bag in strip.channelbags for fc in bag.fcurves]
+
+
+def remove_fcurve(action, fcurve):
+    """Remove one F-curve from *action*, on any Blender version."""
+    if hasattr(action, 'fcurves'):
+        action.fcurves.remove(fcurve)
+        return
+    for layer in action.layers:
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                fc = bag.fcurves.find(fcurve.data_path, index=fcurve.array_index)
+                if fc is not None:
+                    bag.fcurves.remove(fc)
+                    return
+
+
 def action_is_relevant_pose(action) -> bool:
     """Return True if the action has fcurves that animate pose bones."""
-    if action is None or len(action.fcurves) == 0:
+    if action is None:
         return False
-    return any(fc.data_path.startswith("pose.bones[") for fc in action.fcurves)
+    return any(fc.data_path.startswith("pose.bones[") for fc in action_fcurves(action))
 
 
 def discover_pose_actions(min_frames: int = 0, max_frames: int = float('inf')):
