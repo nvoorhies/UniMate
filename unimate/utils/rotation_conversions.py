@@ -9,8 +9,16 @@ Convention: rotation matrices act on column vectors via post-multiplication,
 i.e. ``transformed_point = R @ point``.
 """
 
+from __future__ import annotations
+
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:  # pragma: no cover
+    # Blender's own Python (data_process stage 5) has no torch; it only needs
+    # the ``*_np`` variants below, so the torch ones simply stay unavailable.
+    torch = None
 
 
 def rotation_6d_to_matrix_safe(cont6d: torch.Tensor) -> torch.Tensor:
